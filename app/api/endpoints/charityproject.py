@@ -12,6 +12,7 @@ from app.core.user import current_superuser
 from app.crud import charityproject_crud
 from app.schemas.charityproject import (CharityProjectCreate, CharityProjectDB,
                                         CharityProjectUpdate)
+from app.models import CharityProject
 
 router = APIRouter()
 
@@ -25,7 +26,7 @@ router = APIRouter()
 async def create_new_charityproject(
         charityproject: CharityProjectCreate,
         session: AsyncSession = Depends(get_async_session),
-):
+) -> CharityProject:
     """Только для суперюзеров."""
     await check_name_duplicate(charityproject.name, session)
     new_project = await charityproject_crud.create(charityproject, session)
@@ -39,7 +40,7 @@ async def create_new_charityproject(
 )
 async def get_all_charityprojects(
         session: AsyncSession = Depends(get_async_session),
-):
+) -> List[CharityProject]:
     all_projects = await charityproject_crud.get_multi(session)
     return all_projects
 
@@ -53,7 +54,7 @@ async def partially_update_charityproject(
         charityproject_id: int,
         obj_in: CharityProjectUpdate,
         session: AsyncSession = Depends(get_async_session),
-):
+) -> CharityProject:
     """Только для суперюзеров."""
     charityproject = await check_charityproject_exists(
         charityproject_id,
@@ -82,7 +83,7 @@ async def partially_update_charityproject(
 async def remove_charityproject(
         charityproject_id: int,
         session: AsyncSession = Depends(get_async_session),
-):
+) -> CharityProject:
     """Только для суперюзеров."""
     charityproject = await check_charityproject_exists(
         charityproject_id,

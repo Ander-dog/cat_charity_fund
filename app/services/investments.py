@@ -1,71 +1,58 @@
 from datetime import datetime
-from typing import Tuple, Union
+from typing import Union
 
-from sqlalchemy import false, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CharityProject, Donation
 
 
+MODEL_PAIRS = {
+    Donation: CharityProject,
+    CharityProject: Donation,
+}
+
+
 def close(
         closing_obj: Union[CharityProject, Donation],
         session: AsyncSession
-) -> Union[CharityProject, Donation]:
+) -> None:
     closing_obj.invested_amount = closing_obj.full_amount
     closing_obj.fully_invested = True
     closing_obj.close_date = datetime.now()
     session.add(closing_obj)
-    return closing_obj
 
 
 def investment(
-        donation: Donation,
-        project: CharityProject,
+        invest_obj: Union[CharityProject, Donation],
+        pair_obj: Union[Donation, CharityProject],
         session: AsyncSession
-) -> Tuple[Donation, CharityProject]:
-    donation_money = donation.full_amount - donation.invested_amount
-    requested_money = project.full_amount - project.invested_amount
-    if donation_money > requested_money:
-        donation.invested_amount += requested_money
-        session.add(donation)
-        close(project, session)
-    elif donation_money < requested_money:
-        project.invested_amount += donation_money
-        session.add(project)
-        close(donation, session)
+) -> None:
+    invest_money = invest_obj.full_amount - invest_obj.invested_amount
+    pair_money = pair_obj.full_amount - pair_obj.invested_amount
+    if invest_money > pair_money:
+        invest_obj.invested_amount += pair_money
+        session.add(invest_obj)
+        close(pair_obj, session)
+    elif invest_money < pair_money:
+        pair_obj.invested_amount += invest_money
+        session.add(pair_obj)
+        close(invest_obj, session)
     else:
-        close(donation, session)
-        close(project, session)
-    return donation, project
+        close(invest_obj, session)
+        close(pair_obj, session)
 
 
-async def invest_donation(
-        donation: Donation,
-        session: AsyncSession,
-) -> Donation:
-    while not donation.fully_invested:
-        project = await session.execute(
-            select(CharityProject).where(
-                CharityProject.fully_invested == false()
-            )
+async def invest_in_model(
+        invest_obj: Union[CharityProject, Donation],
+        session: AsyncSession
+) -> None:
+    pair_model = MODEL_PAIRS[type(invest_obj)]
+    while not invest_obj.fully_invested:
+        pair_obj = await session.execute(
+            select(pair_model).where(pair_model.fully_invested.is_(False))
         )
-        project = project.scalars().first()
-        if project is None:
+        pair_obj = pair_obj.scalars().first()
+        if pair_obj is None:
             break
-        donation, project = investment(donation, project, session)
-    return donation
-
-
-async def invest_in_charityproject(
-        project: CharityProject,
-        session: AsyncSession,
-) -> CharityProject:
-    while not project.fully_invested:
-        donation = await session.execute(
-            select(Donation).where(Donation.fully_invested == false())
-        )
-        donation = donation.scalars().first()
-        if donation is None:
-            break
-        donation, project = investment(donation, project, session)
-    return project
+        investment(invest_obj, pair_obj, session)

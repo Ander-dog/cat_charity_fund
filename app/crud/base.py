@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import Base
 from app.models import User
+from app.services.investments import invest_in_model
 
 ModelType = TypeVar('ModelType', bound=Base)
 CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
@@ -64,6 +65,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         obj_in_data['invested_amount'] = 0
         db_obj = self.model(**obj_in_data)
         session.add(db_obj)
+        await invest_in_model(
+            db_obj,
+            session,
+        )
+        await session.commit()
+        await session.refresh(db_obj)
         return db_obj
 
     async def update(

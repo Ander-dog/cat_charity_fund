@@ -47,6 +47,22 @@ pip install -r requirements.txt
 ```
 alembic upgrade head
 ```
+Важное замечание: в файле app/core/config.py задаются переменные окружения и их дефолтные значения. Перезаписать свои можно в файле .env, разместив его в корневой директории. Переменные лучше полностью прописывать заглавными в файле .env, а в файле config.py строчными в соответствии с PEP8:
+
+```
+# config.py
+database_url: str = 'sqlite+aiosqlite:///./fastapi.db'
+# .env
+DATABASE_URL=sqlite+aiosqlite:///./fastapi.db
+```
+
+Запуск приложения:
+
+```
+uvicorn app.main:app
+```
+
+По адресу /docs/ находится документация проекта в формате swagger
 
 
 # Список использованных технологий
@@ -57,6 +73,7 @@ alembic upgrade head
 - SQLAlchemy (для работы с базами данных)
 - Alembic (для создания миграций)
 - Pydantic (для создания схем)
+- Swagger (документация проекта)
 
 # Автор
 
